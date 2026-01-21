@@ -76,6 +76,24 @@ def authorize():
 
     except Exception as e:
         return jsonify({"error":str(e)}), 500
+
+#Delete the keys hence values of the auth namespace only instead of flushing the whole db.   
+def delete_auth_cache():
+    cursor=0
+    pattern="auth:*"
+    while True:
+        cursor, keys=redis_client.scan(
+            cursor=cursor,
+            match=pattern,
+            count=10 
+        )
+
+        if keys:
+            redis_client.delete(*keys)
+
+        if cursor == 0:
+            break 
+    
     
 #STREAM CONSUMER (BACKGROUND)
 def listen_with_consumer_group():
@@ -98,7 +116,7 @@ def listen_with_consumer_group():
 
             for msg_id, message_data in messages:
                 print(f"Message received from stream {stream}: {message_data}")
-                redis_client.flushdb()
+                delete_auth_cache() 
                 redis_client.xack(
                     app.config["STREAM_NAME"],
                     app.config["CONSUMER_GROUP"],
